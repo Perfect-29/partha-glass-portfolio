@@ -1,19 +1,21 @@
 import React, { useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { CLIENT_STATS } from '../data/portfolioData';
+import { usePortfolio } from '../context/PortfolioContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
 /**
  * Statistics showcase, directly under the hero.
- * Edit the numbers and labels in `CLIENT_STATS` (src/data/portfolioData.ts).
+ * Numbers and labels come from the live portfolio content provider.
  *
  * - Entrance + count-up: one ScrollTrigger timeline, same trigger/toggle pattern as the other sections.
  * - Pointer light: a damped lerp on gsap.ticker (same physics as the hero reveal) that writes
  *   --mx / --my / --lo onto the panel; the glow itself is pure CSS (.stat-light, .stat-rim).
  */
 export const Stats: React.FC = () => {
+  const { content } = usePortfolio();
+  const CLIENT_STATS = content.stats;
   const sectionRef = useRef<HTMLElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -159,7 +161,7 @@ export const Stats: React.FC = () => {
       className="relative w-full text-gray-100 py-20 md:py-28 px-4 md:px-10 lg:px-16 overflow-hidden border-t border-white/5"
     >
       <h2 id="stats-heading" className="sr-only">
-        Client results
+        Portfolio highlights
       </h2>
 
       {/* One glass panel, three columns split by hairlines */}
@@ -167,33 +169,39 @@ export const Stats: React.FC = () => {
         <div className="stat-light" aria-hidden="true" />
         <div className="stat-rim" aria-hidden="true" />
 
-        <dl className="relative z-10 m-0 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/20">
-          {CLIENT_STATS.map((stat) => (
-            <div key={stat.id} data-value={stat.value} className="stat-item px-6 py-12 md:px-8 md:py-20 lg:px-10">
-              {/* label comes first in the DOM (dt before dd); flex-col-reverse puts the figure on top */}
-              <div className="stat-cq flex flex-col-reverse gap-6">
-                <dt className="stat-label text-sm md:text-base font-semibold uppercase tracking-[0.16em] leading-snug text-gray-300">
-                  {stat.label}
-                </dt>
-                <dd className="m-0">
-                  <span className="sr-only">
-                    {stat.value}
-                    {stat.suffix}
-                  </span>
-                  <div aria-hidden="true" className="stat-fig font-black uppercase text-white">
-                    {/* the hidden copy reserves the final width so nothing reflows while counting; live digits sit flush right so the suffix always hugs them */}
-                    <span className="relative inline-block">
-                      <span className="invisible">{stat.value}</span>
-                      <span className="stat-num absolute right-0 top-0">{stat.value}</span>
+        {CLIENT_STATS.length ? (
+          <dl className="relative z-10 m-0 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/20">
+            {CLIENT_STATS.map((stat) => (
+              <div key={stat.id} data-value={stat.value} className="stat-item px-6 py-12 md:px-8 md:py-20 lg:px-10">
+                {/* label comes first in the DOM (dt before dd); flex-col-reverse puts the figure on top */}
+                <div className="stat-cq flex flex-col-reverse gap-6">
+                  <dt className="stat-label text-sm md:text-base font-semibold uppercase tracking-[0.16em] leading-snug text-gray-300">
+                    {stat.label}
+                  </dt>
+                  <dd className="m-0">
+                    <span className="sr-only">
+                      {stat.value}
+                      {stat.suffix}
                     </span>
-                    <span className="stat-suffix">{stat.suffix}</span>
-                  </div>
-                  <div className="stat-bar mt-6 w-12 h-1 bg-[#a31515] rounded-full origin-left" aria-hidden="true" />
-                </dd>
+                    <div aria-hidden="true" className="stat-fig font-black uppercase text-white">
+                      {/* the hidden copy reserves the final width so nothing reflows while counting; live digits sit flush right so the suffix always hugs them */}
+                      <span className="relative inline-block">
+                        <span className="invisible">{stat.value}</span>
+                        <span className="stat-num absolute right-0 top-0">{stat.value}</span>
+                      </span>
+                      <span className="stat-suffix">{stat.suffix}</span>
+                    </div>
+                    <div className="stat-bar mt-6 w-12 h-1 bg-[#a31515] rounded-full origin-left" aria-hidden="true" />
+                  </dd>
+                </div>
               </div>
-            </div>
-          ))}
-        </dl>
+            ))}
+          </dl>
+        ) : (
+          <p className="relative z-10 p-8 text-center text-sm text-gray-400">
+            No portfolio highlights have been published yet.
+          </p>
+        )}
       </div>
     </section>
   );

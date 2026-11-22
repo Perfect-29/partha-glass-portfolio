@@ -1,8 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-import { SITE, ABOUT } from '../data/portfolioData';
+import { usePortfolio } from '../context/PortfolioContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -14,6 +13,8 @@ const Rb = 9e-4;
 const clamp = (val: number, max: number) => Math.max(-max, Math.min(max, val));
 
 export const HangingPhoto: React.FC = () => {
+  const { content } = usePortfolio();
+  const ABOUT = content.about;
   const rigRef = useRef<HTMLDivElement>(null);
   const swingRef = useRef<HTMLDivElement>(null);
   const shadowRef = useRef<HTMLDivElement>(null);
@@ -141,23 +142,21 @@ export const HangingPhoto: React.FC = () => {
         <div className="hang-frame glow-frame">
           <span className="hang-ring hang-ring-l" aria-hidden="true" />
           <span className="hang-ring hang-ring-r" aria-hidden="true" />
-          <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-black/40 ring-1 ring-white/15">
+          <div className="relative aspect-square rounded-xl overflow-hidden bg-black ring-1 ring-white/15">
             <img
               src={ABOUT.portrait}
+              srcSet={ABOUT.portrait === '/assets/parthasarathy-portrait.webp'
+                ? '/assets/parthasarathy-portrait-640.webp 640w, /assets/parthasarathy-portrait.webp 1254w'
+                : undefined}
+              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 40vw, 100vw"
               alt={ABOUT.portraitAlt}
+              loading="lazy"
+              decoding="async"
               draggable={false}
-              className="w-full h-full object-cover object-top transition-all duration-700 select-none"
+              className="absolute inset-0 h-full w-full object-cover object-top transition-all duration-700 select-none"
+              style={{ objectPosition: 'center top' }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
             <div className="hang-glare" aria-hidden="true" />
-            <div className="absolute bottom-3 left-3 right-3 text-center">
-              <span className="text-white text-base md:text-xl font-black uppercase tracking-wider block">
-                {SITE.name}
-              </span>
-              <span className="text-red-400 text-xs md:text-sm uppercase font-bold tracking-widest">
-                {ABOUT.portraitCaption}
-              </span>
-            </div>
           </div>
         </div>
       </div>
@@ -165,11 +164,11 @@ export const HangingPhoto: React.FC = () => {
   );
 };
 
-const STACK = ABOUT.technologies;
-
-const FOCUS = ABOUT.focus;
-
 export const About: React.FC = () => {
+  const { content } = usePortfolio();
+  const ABOUT = content.about;
+  const STACK = ABOUT.technologies;
+  const FOCUS = ABOUT.focus;
   const sectionRef = useRef<HTMLElement>(null);
   const headRef = useRef<HTMLHeadingElement>(null);
   const bioRef = useRef<HTMLDivElement>(null);

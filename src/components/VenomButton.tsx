@@ -7,7 +7,7 @@ interface VenomButtonProps {
   href?: string;
   variant?: 'primary' | 'secondary';
   className?: string;
-  /** Only shown in the no-WebGL fallback; the WebGL button draws its label as chrome lettering. */
+  /** Optional icon shown when the WebGL effect is unavailable. */
   icon?: React.ReactNode;
   ariaLabel?: string;
   /** Native button type; use "submit" inside forms. Ignored when `href` is set. */
@@ -26,7 +26,8 @@ const textOf = (node: React.ReactNode): string =>
 /**
  * The Venom liquid button (https://exteestudio.github.io/venom-button/), scoped to a single button.
  * A WebGL2 canvas with transparent padding sits behind the real <a>/<button>, so tendrils can reach
- * out past the pill without affecting layout. Falls back to a plain styled pill without WebGL2.
+ * out past the pill without affecting layout. The HTML label stays crisp above the effect.
+ * Falls back to a plain styled pill without WebGL2.
  */
 export const VenomButton: React.FC<VenomButtonProps> = ({
   children,
@@ -75,7 +76,7 @@ export const VenomButton: React.FC<VenomButtonProps> = ({
   }, [variant, mode]);
 
   useEffect(() => {
-    if (mode === 'webgl') engineRef.current?.setLabel(label || ariaLabel || '');
+    if (mode === 'webgl') engineRef.current?.setLabel(label || ariaLabel || '', false);
   }, [label, ariaLabel, mode]);
 
   const webgl = mode === 'webgl';
@@ -99,11 +100,11 @@ export const VenomButton: React.FC<VenomButtonProps> = ({
     <>
       {/* zero-size anchor at the button's centre; the engine puts its canvas here */}
       <span ref={hostRef} aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-0 w-0" />
-      {/* real text stays in the DOM for screen readers, search and the no-WebGL fallback */}
+      {/* Keep a real label for accessibility and crisp legibility over the WebGL effect. */}
       <span
         className={
           webgl
-            ? 'pointer-events-none absolute h-px w-px overflow-hidden whitespace-nowrap opacity-0'
+            ? 'pointer-events-none relative z-10 whitespace-nowrap px-6 text-[11px] font-bold uppercase tracking-wider text-white md:text-xs'
             : 'relative z-10 flex items-center gap-2.5 px-8 text-xs font-bold uppercase tracking-wider text-white md:text-sm'
         }
       >

@@ -1,46 +1,39 @@
 import React from 'react';
-import { SITE, SOCIALS } from '../data/portfolioData';
+import { usePortfolio } from '../context/PortfolioContext';
+import { PORTFOLIO_BRAND_NAME, PORTFOLIO_TAGLINE } from '../data/portfolioData';
+import { portfolioSectionAnchorId } from '../data/portfolioSections';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 export const Footer: React.FC = () => {
+  const { sections } = usePortfolio();
+  const navSections = [...sections]
+    .filter((section) => section.isEnabled && section.isPublic && section.showInNavigation)
+    .sort((left, right) => left.displayOrder - right.displayOrder);
+  const homeAnchor = navSections.find((section) => section.sectionKey === 'home');
+  const brandAnchor = homeAnchor ?? navSections[0];
   return (
     <footer className="glass-bar w-full text-white py-14 px-6 md:px-16 border-t border-white/5">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
         <div className="flex flex-col items-center md:items-start gap-1">
-          <a href="/" className="text-2xl font-black tracking-tight uppercase flex items-center">
-            <span className="text-red-600 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]">{SITE.name.charAt(0)}</span>
-            <span>{SITE.name.slice(1)}.</span>
+          <a href={brandAnchor ? `#${portfolioSectionAnchorId(brandAnchor.sectionKey)}` : '#'} className="text-2xl font-black tracking-tight uppercase">
+            <span className="text-red-500 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]">{PORTFOLIO_BRAND_NAME}</span>
           </a>
           <p className="text-[11px] text-gray-400 font-mono tracking-widest uppercase">
-            {SITE.role}
+            {PORTFOLIO_TAGLINE}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {SOCIALS.map((social) => (
-            <a
-              key={social.id}
-              href={social.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="glass-chip px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-all hover:scale-105"
-            >
-              {social.label}
-            </a>
-          ))}
-        </div>
-
         <div className="flex flex-col items-center md:items-end gap-3">
-          <div className="flex flex-wrap items-center justify-center gap-5 text-xs text-gray-400 uppercase tracking-widest font-bold">
-            <a href="#about" className="hover:text-red-500 transition-colors">About</a>
-            <a href="#skills" className="hover:text-red-500 transition-colors">Skills</a>
-            <a href="#projects" className="hover:text-red-500 transition-colors">Projects</a>
-            <a href="#services" className="hover:text-red-500 transition-colors">Services</a>
-            <a href="#contact" className="hover:text-red-500 transition-colors">Contact</a>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-400 uppercase tracking-widest font-bold">
+            {navSections.map((section) => (
+              <a key={section.id} href={`#${portfolioSectionAnchorId(section.sectionKey)}`} className="hover:text-red-500 transition-colors">
+                {section.sectionKey === 'home' ? 'Home' : section.sectionName}
+              </a>
+            ))}
           </div>
           <div className="text-[11px] text-gray-500 font-mono uppercase tracking-wider">
-            &copy; {CURRENT_YEAR} {SITE.name}. All rights reserved.
+            &copy; {CURRENT_YEAR} {PORTFOLIO_BRAND_NAME}. All rights reserved.
           </div>
         </div>
       </div>

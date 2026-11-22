@@ -2,11 +2,12 @@ import React, { useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SoftwareStrip } from './SoftwareStrip';
-import { SKILL_CARDS } from '../data/portfolioData';
+import { usePortfolio } from '../context/PortfolioContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export const Skills: React.FC = () => {
+  const { content } = usePortfolio();
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +35,7 @@ export const Skills: React.FC = () => {
     return () => ctx.revert();
   }, []);
 
-  const skillsData = SKILL_CARDS;
+  const skillsData = content.skills;
 
   return (
     <section
@@ -58,28 +59,34 @@ export const Skills: React.FC = () => {
       {/* Skills Matrix Cards */}
       <div className="relative w-full max-w-6xl z-10">
         <div className="red-halo" aria-hidden="true" />
-        <div className="grid-blur relative grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-7">
-        {skillsData.map((skill) => (
-          <div
-            key={skill.name}
-            className="matrix-item glass glass-grid-card group p-6 md:p-8 rounded-3xl flex items-center justify-between gap-4"
-          >
-            <div className="flex items-center gap-4 md:gap-5 min-w-0">
-              <div className="min-w-0">
-                <h3 className="font-bold text-lg md:text-2xl text-gray-100 group-hover:text-[#a31515] transition-colors">
-                  {skill.name}
-                </h3>
-                <span className="text-xs md:text-sm font-semibold text-gray-500 uppercase tracking-wider">
-                  {skill.category}
+        {skillsData.length ? (
+          <div className="grid-blur relative grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-7">
+            {skillsData.map((skill) => (
+              <div
+                key={skill.name}
+                className="matrix-item glass glass-grid-card group p-6 md:p-8 rounded-3xl flex items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-4 md:gap-5 min-w-0">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-lg md:text-2xl text-gray-100 group-hover:text-[#a31515] transition-colors">
+                      {skill.name}
+                    </h3>
+                    <span className="text-xs md:text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                      {skill.category}
+                    </span>
+                  </div>
+                </div>
+                <span className="glass-chip text-xs md:text-sm font-black uppercase tracking-wider px-4 py-1.5 text-gray-200 shrink-0 group-hover:text-white rounded-full">
+                  {skill.level}
                 </span>
               </div>
-            </div>
-            <span className="glass-chip text-xs md:text-sm font-black uppercase tracking-wider px-4 py-1.5 text-gray-200 shrink-0 group-hover:text-white rounded-full">
-              {skill.level}
-            </span>
+            ))}
           </div>
-        ))}
-        </div>
+        ) : (
+          <p className="glass rounded-2xl p-6 text-center text-sm text-gray-400">
+            No skills have been published yet.
+          </p>
+        )}
       </div>
 
       {/* Software & tools capsules */}

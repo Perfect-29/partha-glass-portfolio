@@ -593,7 +593,7 @@ void main() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     layout();
   }
-  async function setLabel(text) {
+  async function setLabel(text, render = true) {
     labelText = text;
     labelInkW = 0;
     layout();
@@ -605,7 +605,7 @@ void main() {
     } catch { /* fall back to the system font */ }
     if (destroyed) return;
     drawLabel();
-    labelAmt = 0; labelTarget = 1;
+    labelAmt = 0; labelTarget = render ? 1 : 0;
     // if Geist arrives late, redraw so the pill hugs the real glyph widths
     document.fonts.ready.then(() => { if (!destroyed) drawLabel(); });
   }

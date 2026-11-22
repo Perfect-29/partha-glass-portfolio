@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { gsap } from 'gsap';
 import { VenomButton } from './VenomButton';
-import { HERO } from '../data/portfolioData';
+import { usePortfolio } from '../context/PortfolioContext';
 import {
   BREATHING_VERTICES,
   SHARD_POLYGONS,
@@ -16,9 +16,6 @@ import {
   stepSpring,
   type Pt,
 } from './heroShards';
-
-/** Portrait that is "seen through" the glass (also the CSS fallback image). */
-const IMG_HERO_RED = HERO.image;
 
 /** Horizontal position (0..1) of the subject inside the 16:9 hero image. */
 const SUBJECT_X = 0.69;
@@ -98,12 +95,30 @@ interface ShardState {
   targetY: number;
 }
 
-export const Hero: React.FC = () => {
+export const Hero: React.FC<{ onEnter: () => void; onReady: () => void }> = ({ onEnter, onReady }) => {
+  const { content } = usePortfolio();
+  const HERO = content.hero;
   const sectionRef = useRef<HTMLElement>(null); // <section>
   const stageRef = useRef<HTMLDivElement>(null); // WebGL mount
   const copyRef = useRef<HTMLDivElement>(null); // headline + CTAs
+  const onReadyRef = useRef(onReady);
+  const readyNotifiedRef = useRef(false);
   const [webgl, setWebgl] = useState<boolean | null>(null);
-  const [mobile, setMobile] = useState(false);
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
+  const usesDefaultHeroImage = HERO.image === '/assets/hero-red-bg.webp';
+  const IMG_HERO_RED = usesDefaultHeroImage && mobile
+    ? '/assets/hero-red-bg-768.webp'
+    : HERO.image;
+  const heroImageSrcSet = usesDefaultHeroImage
+    ? '/assets/hero-red-bg-768.webp 768w, /assets/hero-red-bg.webp 1672w'
+    : undefined;
+  onReadyRef.current = onReady;
+
+  const notifyReady = () => {
+    if (readyNotifiedRef.current) return;
+    readyNotifiedRef.current = true;
+    onReadyRef.current();
+  };
 
   useRevealOnScroll(
     sectionRef as React.RefObject<HTMLElement>,
@@ -174,7 +189,15 @@ export const Hero: React.FC = () => {
 
     /* portrait texture is used as the glass' emissive colour = "image inside glass" */
     let textureReady = false;
-    const portrait = new THREE.TextureLoader().load(IMG_HERO_RED, () => (textureReady = true));
+    const portrait = new THREE.TextureLoader().load(
+      IMG_HERO_RED,
+      () => (textureReady = true),
+      undefined,
+      (error) => {
+        console.error('Unable to load the hero portrait texture.', error);
+        setWebgl(false);
+      },
+    );
     portrait.colorSpace = THREE.SRGBColorSpace;
     portrait.anisotropy = 8;
 
@@ -443,18 +466,35 @@ export const Hero: React.FC = () => {
     let idleClock = 0;
     let visible = true;
 
+    const stopFrame = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    };
+    const startFrame = () => {
+      if (raf || !visible || document.visibilityState !== 'visible') return;
+      lastTime = performance.now();
+      raf = requestAnimationFrame(frame);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') startFrame();
+      else stopFrame();
+    };
     const io = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
-      if (!visible) release();
+      if (!visible) {
+        stopFrame();
+        release();
+      } else {
+        startFrame();
+      }
     });
     io.observe(section);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     const frame = (nowMs: number) => {
+      raf = 0;
+      if (!visible || document.visibilityState !== 'visible') return;
       raf = requestAnimationFrame(frame);
-      if (!visible) {
-        lastTime = nowMs;
-        return;
-      }
       const dt = Math.min((nowMs - lastTime) / 1000, 0.05);
       lastTime = nowMs;
       const time = nowMs / 1000;
@@ -528,14 +568,18 @@ export const Hero: React.FC = () => {
       }
 
       renderer.render(scene, camera);
-      if (textureReady) stage.dataset.sceneReady = '1';
+      if (textureReady) {
+        stage.dataset.sceneReady = '1';
+        notifyReady();
+      }
     };
-    raf = requestAnimationFrame(frame);
+    startFrame();
 
     return () => {
-      cancelAnimationFrame(raf);
+      stopFrame();
       resizeObserver.disconnect();
       io.disconnect();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       section.removeEventListener('pointermove', onPointerMove);
       section.removeEventListener('pointerleave', onPointerLeave);
       release();
@@ -557,7 +601,7 @@ export const Hero: React.FC = () => {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [webgl]);
+  }, [webgl, IMG_HERO_RED]);
 
   /* ───────────────────────── Markup ───────────────────────── */
   const useFallback = webgl === false;
@@ -581,9 +625,15 @@ export const Hero: React.FC = () => {
           >
             <img
               src={IMG_HERO_RED}
+              srcSet={heroImageSrcSet}
+              sizes="100vw"
               alt={HERO.imageAlt}
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectPosition: HERO.imagePosition }}
+              decoding="async"
+              fetchPriority="high"
+              onLoad={notifyReady}
+              onError={notifyReady}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-[#050507]/80 via-[#050507]/30 to-transparent" />
           </div>
@@ -609,19 +659,30 @@ export const Hero: React.FC = () => {
               <span className="text-[#ff2a3b] font-bold uppercase text-[11px] sm:text-xs md:text-sm tracking-[0.25em]">
                 {HERO.eyebrow}
               </span>
-              <h1 className="text-white text-4xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black tracking-tight leading-[0.88] uppercase drop-shadow-md">
+              <h1 className="bg-gradient-to-b from-white via-gray-200 to-gray-500 bg-clip-text text-transparent text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[0.88] uppercase drop-shadow-md md:whitespace-nowrap">
                 {HERO.headline}
               </h1>
               <div className="flex items-center gap-2 sm:gap-3 text-white font-extrabold text-sm sm:text-base md:text-lg lg:text-xl uppercase tracking-wider mt-0.5">
                 <span>{HERO.roles[0]}</span>
-                <span className="text-[#ff2a3b] font-bold">/</span>
-                <span>{HERO.roles[1]}</span>
+                {HERO.roles[1] && (
+                  <>
+                    <span className="text-[#ff2a3b] font-bold">/</span>
+                    <span>{HERO.roles[1]}</span>
+                  </>
+                )}
               </div>
               <p className="text-gray-300 text-xs sm:text-sm md:text-base lg:text-lg font-normal tracking-wide mt-1">
                 {HERO.tagline}
               </p>
               <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-3 sm:mt-6">
-                <VenomButton href="#projects" variant="primary">
+                <VenomButton
+                  href="#projects"
+                  variant="primary"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onEnter();
+                  }}
+                >
                   {HERO.primaryButton}
                 </VenomButton>
                 <a

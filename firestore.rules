@@ -1,0 +1,435 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid == 'uROTP7r3rgZUcmLn9MSQmrtGNFh1';
+    }
+
+    function isPortfolioCollection(name) {
+      return name in [
+        'profile',
+        'projects',
+        'skills',
+        'education',
+        'experience',
+        'achievements',
+        'certifications',
+        'internships',
+        'workshops',
+        'codingProfiles',
+        'publications',
+        'resume',
+        'socialLinks',
+        'siteSettings'
+      ];
+    }
+
+    function isAdminCollection(name) {
+      return isPortfolioCollection(name) || name in ['messages', 'portfolioActivity'];
+    }
+
+    function validString(value, maxLength) {
+      return value is string && value.size() <= maxLength;
+    }
+
+    function validRequiredString(value, maxLength) {
+      return value is string && value.size() > 0 && value.size() <= maxLength;
+    }
+
+    function validHttpUrl(value, maxLength) {
+      return validString(value, maxLength) && value.matches('^https?://[^ ]+$');
+    }
+
+    function validStringList(value, maxItems) {
+      return value is list && value.size() <= maxItems;
+    }
+
+    function validMetadata(documentId, allowedKeys) {
+      let data = request.resource.data;
+      return data.keys().hasOnly(allowedKeys)
+        && data.keys().hasAll(['id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy'])
+        && data.id == documentId
+        && data.order is int
+        && data.order >= 0
+        && data.published == true
+        && data.publishedAt is timestamp
+        && data.updatedAt is timestamp
+        && data.updatedBy == request.auth.uid;
+    }
+
+    function validProfile(documentId) {
+      let data = request.resource.data;
+      let site = data.site;
+      let hero = data.hero;
+      let about = data.about;
+      return documentId == 'main'
+        && validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'site', 'hero', 'about'
+        ])
+        && site is map
+        && site.keys().hasOnly(['name', 'role', 'email', 'emailPlaceholder'])
+        && site.keys().hasAll(['name', 'role', 'email', 'emailPlaceholder'])
+        && validString(site.name, 120)
+        && validString(site.role, 160)
+        && validString(site.email, 254)
+        && validString(site.emailPlaceholder, 200)
+        && hero is map
+        && hero.keys().hasOnly([
+          'eyebrow', 'headline', 'roles', 'tagline', 'primaryButton',
+          'secondaryButton', 'image', 'imageAlt', 'imagePosition'
+        ])
+        && hero.keys().hasAll([
+          'eyebrow', 'headline', 'roles', 'tagline', 'primaryButton',
+          'secondaryButton', 'image', 'imageAlt', 'imagePosition'
+        ])
+        && validString(hero.eyebrow, 200)
+        && validString(hero.headline, 200)
+        && hero.roles is list
+        && hero.roles.size() == 2
+        && validString(hero.roles[0], 160)
+        && validString(hero.roles[1], 160)
+        && validString(hero.tagline, 500)
+        && validString(hero.primaryButton, 100)
+        && validString(hero.secondaryButton, 100)
+        && validString(hero.image, 2048)
+        && validString(hero.imageAlt, 300)
+        && validString(hero.imagePosition, 100)
+        && about is map
+        && about.keys().hasOnly([
+          'eyebrow', 'portrait', 'portraitAlt', 'paragraphs',
+          'technologies', 'focus'
+        ])
+        && about.keys().hasAll([
+          'eyebrow', 'portrait', 'portraitAlt', 'paragraphs',
+          'technologies', 'focus'
+        ])
+        && validString(about.eyebrow, 200)
+        && validString(about.portrait, 2048)
+        && validString(about.portraitAlt, 300)
+        && validStringList(about.paragraphs, 20)
+        && validStringList(about.technologies, 100)
+        && validStringList(about.focus, 50);
+    }
+
+    function validProject(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'title', 'category', 'subtitle', 'status', 'videoUrl', 'embedUrl',
+          'driveUrl', 'liveUrl', 'repoUrl', 'kind', 'poster', 'description',
+          'tags', 'problem', 'objectives', 'solution', 'implementation', 'features',
+          'applications'
+        ])
+        && validString(data.title, 200)
+        && validString(data.category, 160)
+        && validString(data.subtitle, 200)
+        && data.status in ['Completed', 'In Development', 'Concept', 'Academic Project']
+        && (!('videoUrl' in data) || validString(data.videoUrl, 2048))
+        && (!('embedUrl' in data) || validString(data.embedUrl, 2048))
+        && (!('driveUrl' in data) || validString(data.driveUrl, 2048))
+        && (!('liveUrl' in data) || validString(data.liveUrl, 2048))
+        && (!('repoUrl' in data) || validString(data.repoUrl, 2048))
+        && (!('kind' in data) || data.kind in ['video', 'software'])
+        && (!('poster' in data) || validString(data.poster, 2048))
+        && (!('description' in data) || validString(data.description, 5000))
+        && (!('tags' in data) || validStringList(data.tags, 100))
+        && (!('problem' in data) || validString(data.problem, 5000))
+        && (!('objectives' in data) || validStringList(data.objectives, 100))
+        && (!('solution' in data) || validString(data.solution, 5000))
+        && (!('implementation' in data) || validString(data.implementation, 5000))
+        && (!('features' in data) || validStringList(data.features, 100))
+        && (!('applications' in data) || validStringList(data.applications, 100));
+    }
+
+    function validSkill(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'name', 'category', 'level'
+        ])
+        && validString(data.name, 160)
+        && validString(data.category, 120)
+        && validString(data.level, 80);
+    }
+
+    function validEducation(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'degree', 'institution', 'period', 'status'
+        ])
+        && validString(data.degree, 240)
+        && validString(data.institution, 240)
+        && validString(data.period, 120)
+        && validString(data.status, 120);
+    }
+
+    function validExperience(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'title', 'description'
+        ])
+        && validString(data.title, 240)
+        && validString(data.description, 5000);
+    }
+
+    function validAchievement(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'title', 'issuer', 'date', 'description', 'certificateUrl', 'organization',
+          'category', 'proofUrl', 'featured', 'credentialId', 'credentialUrl',
+          'fileName', 'fileType', 'fileSize'
+        ])
+        && validRequiredString(data.title, 240)
+        && validRequiredString(data.issuer, 240)
+        && validRequiredString(data.date, 120)
+        && validRequiredString(data.description, 5000)
+        && (!('certificateUrl' in data) || data.certificateUrl == '' || validHttpUrl(data.certificateUrl, 2048))
+        && (!('organization' in data) || validString(data.organization, 240))
+        && (!('category' in data) || validString(data.category, 120))
+        && (!('proofUrl' in data) || data.proofUrl == '' || validHttpUrl(data.proofUrl, 2048))
+        && (!('featured' in data) || data.featured is bool)
+        && (!('credentialId' in data) || validString(data.credentialId, 240))
+        && (!('credentialUrl' in data) || data.credentialUrl == '' || validHttpUrl(data.credentialUrl, 2048))
+        && validFileMetadata(data);
+    }
+
+    function validFileMetadata(data) {
+      return (!('fileName' in data) || validString(data.fileName, 240))
+        && (!('fileType' in data) || data.fileType in ['application/pdf', 'image/jpeg', 'image/png'])
+        && (!('fileSize' in data) || (data.fileSize is int && data.fileSize >= 0 && data.fileSize < 15728640));
+    }
+
+    function validCertification(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'title', 'organization', 'issueDate', 'category', 'credentialId',
+          'credentialUrl', 'certificateUrl', 'fileName', 'fileType', 'fileSize'
+        ])
+        && validRequiredString(data.title, 240)
+        && validRequiredString(data.organization, 240)
+        && validRequiredString(data.issueDate, 120)
+        && validRequiredString(data.category, 120)
+        && validString(data.credentialId, 240)
+        && (data.credentialUrl == '' || validHttpUrl(data.credentialUrl, 2048))
+        && validHttpUrl(data.certificateUrl, 2048)
+        && validFileMetadata(data);
+    }
+
+    function validInternship(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'company', 'role', 'duration', 'startDate', 'endDate', 'description',
+          'skills', 'certificateUrl', 'fileName', 'fileType', 'fileSize'
+        ])
+        && validRequiredString(data.company, 240)
+        && validRequiredString(data.role, 240)
+        && validRequiredString(data.duration, 120)
+        && validString(data.startDate, 120)
+        && validString(data.endDate, 120)
+        && validRequiredString(data.description, 5000)
+        && validStringList(data.skills, 100)
+        && validHttpUrl(data.certificateUrl, 2048)
+        && validFileMetadata(data);
+    }
+
+    function validWorkshop(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'title', 'institution', 'date', 'description', 'certificateUrl',
+          'imageUrl', 'url', 'fileName', 'fileType', 'fileSize',
+          'certificateFileName', 'certificateFileType', 'certificateFileSize',
+          'imageFileName', 'imageFileType', 'imageFileSize'
+        ])
+        && validRequiredString(data.title, 240)
+        && validRequiredString(data.institution, 240)
+        && validRequiredString(data.date, 120)
+        && validRequiredString(data.description, 5000)
+        && (data.certificateUrl == '' || validHttpUrl(data.certificateUrl, 2048))
+        && (data.imageUrl == '' || validHttpUrl(data.imageUrl, 2048))
+        && (data.url == '' || validHttpUrl(data.url, 2048))
+        && validFileMetadata(data)
+        && (!('certificateFileName' in data) || validString(data.certificateFileName, 240))
+        && (!('certificateFileType' in data) || data.certificateFileType in ['application/pdf', 'image/jpeg', 'image/png'])
+        && (!('certificateFileSize' in data) || (data.certificateFileSize is int && data.certificateFileSize >= 0 && data.certificateFileSize < 15728640))
+        && (!('imageFileName' in data) || validString(data.imageFileName, 240))
+        && (!('imageFileType' in data) || data.imageFileType in ['image/jpeg', 'image/png'])
+        && (!('imageFileSize' in data) || (data.imageFileSize is int && data.imageFileSize >= 0 && data.imageFileSize < 10485760));
+    }
+
+    function validCodingProfile(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'platform', 'username', 'profileUrl'
+        ])
+        && validRequiredString(data.platform, 120)
+        && validRequiredString(data.username, 160)
+        && validHttpUrl(data.profileUrl, 2048);
+    }
+
+    function validPublication(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'title', 'abstract', 'publicationDate', 'venue', 'doi', 'publicationUrl',
+          'pdfUrl', 'fileName', 'fileType', 'fileSize'
+        ])
+        && validRequiredString(data.title, 300)
+        && validRequiredString(data.abstract, 10000)
+        && validRequiredString(data.publicationDate, 120)
+        && validRequiredString(data.venue, 240)
+        && validString(data.doi, 500)
+        && (data.publicationUrl == '' || validHttpUrl(data.publicationUrl, 2048))
+        && (data.pdfUrl == '' || validHttpUrl(data.pdfUrl, 2048))
+        && validFileMetadata(data);
+    }
+
+    function validResume(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'title', 'fileUrl', 'uploadedAt', 'fileName', 'fileType', 'fileSize'
+        ])
+        && validRequiredString(data.title, 240)
+        && validHttpUrl(data.fileUrl, 2048)
+        && validRequiredString(data.uploadedAt, 120)
+        && validFileMetadata(data);
+    }
+
+    function validSocialLink(documentId) {
+      let data = request.resource.data;
+      return validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'label', 'href'
+        ])
+        && validString(data.label, 120)
+        && validString(data.href, 2048);
+    }
+
+    function validSiteSettings(documentId) {
+      let data = request.resource.data;
+      let loader = data.loader;
+      return documentId == 'main'
+        && validMetadata(documentId, [
+          'id', 'order', 'published', 'publishedAt', 'updatedAt', 'updatedBy',
+          'schemaVersion', 'pageTitle', 'loader', 'techStack', 'stats', 'resumeUrl'
+        ])
+        && data.schemaVersion == 1
+        && validString(data.pageTitle, 240)
+        && loader is map
+        && loader.keys().hasOnly(['statement', 'redWords'])
+        && loader.keys().hasAll(['statement', 'redWords'])
+        && validString(loader.statement, 500)
+        && validStringList(loader.redWords, 50)
+        && validStringList(data.techStack, 100)
+        && data.stats is list
+        && data.stats.size() <= 100
+        && validString(data.resumeUrl, 2048);
+    }
+
+    function validPortfolioRecord(collectionName, documentId) {
+      return (collectionName == 'profile' && validProfile(documentId))
+        || (collectionName == 'projects' && validProject(documentId))
+        || (collectionName == 'skills' && validSkill(documentId))
+        || (collectionName == 'education' && validEducation(documentId))
+        || (collectionName == 'experience' && validExperience(documentId))
+        || (collectionName == 'achievements' && validAchievement(documentId))
+        || (collectionName == 'certifications' && validCertification(documentId))
+        || (collectionName == 'internships' && validInternship(documentId))
+        || (collectionName == 'workshops' && validWorkshop(documentId))
+        || (collectionName == 'codingProfiles' && validCodingProfile(documentId))
+        || (collectionName == 'publications' && validPublication(documentId))
+        || (collectionName == 'resume' && validResume(documentId))
+        || (collectionName == 'socialLinks' && validSocialLink(documentId))
+        || (collectionName == 'siteSettings' && validSiteSettings(documentId));
+    }
+
+    function validDraft(draftId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'collection', 'recordId', 'data', 'order', 'deleted', 'updatedAt', 'updatedBy'
+        ])
+        && data.keys().hasAll([
+          'collection', 'recordId', 'data', 'order', 'deleted', 'updatedAt', 'updatedBy'
+        ])
+        && isPortfolioCollection(data.collection)
+        && data.recordId is string
+        && data.recordId.matches('^[A-Za-z0-9_-]+$')
+        && draftId == data.collection + '__' + data.recordId
+        && data.order is int
+        && data.order >= 0
+        && data.deleted is bool
+        && (data.deleted ? data.data == null : data.data is map)
+        && data.updatedAt is timestamp
+        && data.updatedBy == request.auth.uid;
+    }
+
+    function validPublicMessage() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['name', 'email', 'message', 'status', 'createdAt'])
+        && data.keys().hasAll(['name', 'email', 'message', 'status', 'createdAt'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && data.email is string
+        && data.email.size() <= 254
+        && data.email.matches('^[A-Za-z0-9.!#$%&\\x27*+/=?^_`{|}~-]+@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$')
+        && data.message is string
+        && data.message.size() > 0
+        && data.message.size() <= 5000
+        && data.status == 'unread'
+        && data.createdAt is timestamp
+        && data.createdAt == request.time;
+    }
+
+    function validActivity() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['action', 'section', 'actor', 'createdAt'])
+        && data.keys().hasAll(['action', 'section', 'actor', 'createdAt'])
+        && validRequiredString(data.action, 240)
+        && validRequiredString(data.section, 160)
+        && validRequiredString(data.actor, 254)
+        && data.createdAt is timestamp
+        && data.createdAt == request.time;
+    }
+
+    match /{collectionName}/{documentId} {
+      allow read: if (isAdmin() && isAdminCollection(collectionName))
+        || (isPortfolioCollection(collectionName) && resource.data.published == true);
+      allow create, update: if isAdmin() && validPortfolioRecord(collectionName, documentId);
+      allow delete: if isAdmin()
+        && isPortfolioCollection(collectionName)
+        && (collectionName in ['profile', 'siteSettings'] ? documentId == 'main' : true);
+    }
+
+    match /drafts/{draftId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && validDraft(draftId);
+      allow delete: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow create: if isAdmin() || validPublicMessage();
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /portfolioActivity/{activityId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validActivity();
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

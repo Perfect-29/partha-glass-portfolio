@@ -1,198 +1,116 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { LOADER, ABOUT, HERO } from '../data/portfolioData';
-
 interface GlitchLoaderProps {
+  canExit: boolean;
+  onStart: () => void;
+  onRevealComplete: () => void;
+  onTransitionStart: () => void;
   onComplete: () => void;
 }
 
-const STATEMENT = LOADER.statement;
-const WORDS = STATEMENT.split(' ');
-const RED_WORDS = new Set(LOADER.redWords);
-const PRELOAD_ASSETS = [
-  ABOUT.portrait,
-  HERO.image,
-];
-const TIMEOUT_MS = 7000;
-const REVEAL_DELAY_MS = 500;
-const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+type IntroPhase = 'revealing' | 'waiting' | 'exiting';
+const WELCOME_SEQUENCE_MS = 4800;
+const EXIT_FADE_MS = 650;
 
-function trackPreload(onProgress: (ratio: number) => void) {
-  const total = PRELOAD_ASSETS.length + 3;
-  let loaded = 0;
-  let cancelled = false;
+const renderLetters = (text: string, startDelay: number, letterDelay: number) =>
+  Array.from(text).map((letter, index) => (
+    <span key={`${letter}-${index}`} style={{ animationDelay: `${startDelay + index * letterDelay}ms` }}>
+      {letter === ' ' ? '\u00a0' : letter}
+    </span>
+  ));
 
-  const tick = () => {
-    if (!cancelled) {
-      loaded += 1;
-      onProgress(Math.min(1, loaded / total));
-    }
-  };
-
-  PRELOAD_ASSETS.forEach((src) => {
-    const img = new Image();
-    img.onload = img.onerror = tick;
-    img.src = src;
-  });
-
-  (document.fonts?.ready ?? Promise.resolve()).then(tick, tick);
-
-  if (document.readyState === 'complete') {
-    tick();
-  } else {
-    window.addEventListener('load', tick, { once: true });
-  }
-
-  let sceneChecks = 0;
-  const checkScene = () => {
-    if (cancelled) return;
-    if (document.querySelector('[data-scene-ready]') || sceneChecks > 60) {
-      tick();
-    } else {
-      sceneChecks += 1;
-      window.setTimeout(checkScene, 100);
-    }
-  };
-  checkScene();
-
-  return () => {
-    cancelled = true;
-    window.removeEventListener('load', tick);
-  };
-}
-
-export const GlitchLoader: React.FC<GlitchLoaderProps> = ({ onComplete }) => {
-  const [percent, setPercent] = useState(0);
-  const [phase, setPhase] = useState<'loading' | 'reveal'>('loading');
-  const targetRef = useRef(0);
-  const currentRef = useRef(0);
-  const tensStripRef = useRef<HTMLSpanElement>(null);
-  const onesStripRef = useRef<HTMLSpanElement>(null);
+export const GlitchLoader: React.FC<GlitchLoaderProps> = ({
+  canExit,
+  onStart,
+  onRevealComplete,
+  onTransitionStart,
+  onComplete,
+}) => {
+  const [phase, setPhase] = useState<IntroPhase>('revealing');
+  const completedRef = useRef(false);
+  const exitStartedRef = useRef(false);
+  const onStartRef = useRef(onStart);
+  const onRevealCompleteRef = useRef(onRevealComplete);
+  const onTransitionStartRef = useRef(onTransitionStart);
   const onCompleteRef = useRef(onComplete);
+  const timersRef = useRef<number[]>([]);
+  onStartRef.current = onStart;
+  onRevealCompleteRef.current = onRevealComplete;
+  onTransitionStartRef.current = onTransitionStart;
   onCompleteRef.current = onComplete;
 
   useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    onStartRef.current();
 
-    const cancelPreload = trackPreload((ratio) => {
-      targetRef.current = ratio;
-    });
-
-    const maxTimer = window.setTimeout(() => {
-      targetRef.current = 1;
-    }, TIMEOUT_MS);
-
-    const timeouts: number[] = [];
-    let animId = 0;
-    let lastTime = performance.now();
-
-    const loop = (now: number) => {
-      const dt = Math.min(64, now - lastTime);
-      lastTime = now;
-
-      const targetVal = targetRef.current * 100;
-      const nextVal = Math.min(
-        targetVal,
-        currentRef.current + Math.max(0.15, (targetVal - currentRef.current) * 0.006 * dt)
-      );
-      currentRef.current = nextVal;
-      setPercent(Math.floor(nextVal));
-
-      const v = currentRef.current;
-      if (tensStripRef.current) {
-        tensStripRef.current.style.transform = `translateY(${-(v / 10)}em)`;
-      }
-      if (onesStripRef.current) {
-        onesStripRef.current.style.transform = `translateY(${-(9 - (v % 10))}em)`;
-      }
-
-      if (nextVal >= 99.999) {
-        setPercent(100);
-        timeouts.push(
-          window.setTimeout(() => setPhase('reveal'), REVEAL_DELAY_MS),
-          window.setTimeout(() => {
-            document.body.style.overflow = '';
-            onCompleteRef.current();
-          }, 1500)
-        );
-        return;
-      }
-
-      animId = requestAnimationFrame(loop);
-    };
-
-    animId = requestAnimationFrame(loop);
+    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 250
+      : WELCOME_SEQUENCE_MS;
+    const timer = window.setTimeout(() => {
+      timersRef.current = timersRef.current.filter((item) => item !== timer);
+      if (completedRef.current) return;
+      setPhase('waiting');
+      onRevealCompleteRef.current();
+    }, delay);
+    timersRef.current.push(timer);
 
     return () => {
-      cancelPreload();
-      cancelAnimationFrame(animId);
-      window.clearTimeout(maxTimer);
-      timeouts.forEach(window.clearTimeout);
-      document.body.style.overflow = '';
+      timersRef.current.forEach(window.clearTimeout);
+      timersRef.current = [];
+      document.body.style.overflow = originalOverflow;
     };
   }, []);
 
-  const progressFraction = percent / 100;
+  useEffect(() => {
+    if (phase !== 'waiting' || !canExit || exitStartedRef.current) return;
+    exitStartedRef.current = true;
+    onTransitionStartRef.current();
+    setPhase('exiting');
+  }, [canExit, phase]);
+
+  useEffect(() => {
+    if (phase !== 'exiting') return;
+    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : EXIT_FADE_MS;
+    const timer = window.setTimeout(() => {
+      timersRef.current = timersRef.current.filter((item) => item !== timer);
+      if (completedRef.current) return;
+      completedRef.current = true;
+      onCompleteRef.current();
+    }, delay);
+    timersRef.current.push(timer);
+    return () => {
+      window.clearTimeout(timer);
+      timersRef.current = timersRef.current.filter((item) => item !== timer);
+    };
+  }, [phase]);
 
   return (
     <div
-      className={`glitch-loader ${phase === 'reveal' ? 'is-revealing' : ''}`}
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={percent}
-      aria-label={STATEMENT}
+      className={`glitch-loader is-intro${phase === 'exiting' ? ' is-exiting' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Portfolio welcome"
     >
-      <div className="glitch-loader__veil" />
-      <div className="glitch-loader__count" aria-hidden="true">
-        {percent >= 100 ? (
-          <span className="glitch-loader__final">100</span>
-        ) : (
-          <>
-            <span className="glitch-loader__digit">
-              <span ref={tensStripRef} className="glitch-loader__digit-strip">
-                {DIGITS.map((d) => (
-                  <span key={d}>{d}</span>
-                ))}
-              </span>
-            </span>
-            <span className="glitch-loader__digit">
-              <span ref={onesStripRef} className="glitch-loader__digit-strip">
-                {[...DIGITS].reverse().map((d) => (
-                  <span key={d}>{d}</span>
-                ))}
-              </span>
-            </span>
-          </>
-        )}
+      <div className="glitch-loader__veil" aria-hidden="true" />
+      <div className="glitch-loader__atmosphere" aria-hidden="true">
+        <div className="glitch-loader__smoke" />
+        <div className="glitch-loader__embers glitch-loader__embers--one" />
+        <div className="glitch-loader__embers glitch-loader__embers--two" />
+        <div className="glitch-loader__energy" />
+        <div className="glitch-loader__streaks" />
       </div>
-
-      <div className="glitch-loader__center">
-        <p
-          className="glitch-loader__statement"
-          style={{ filter: `blur(${(1 - progressFraction) * 6}px)` }}
-          aria-hidden="true"
-        >
-          {WORDS.map((w, idx) => {
-            const wordOffset = idx / WORDS.length;
-            const wordOpacity = Math.max(0, Math.min(1, (progressFraction - wordOffset * 0.7) * 3));
-            return (
-              <span
-                key={idx}
-                className={`glitch-loader__word${RED_WORDS.has(w) ? ' glitch-loader__word--red' : ''}`}
-                style={{ opacity: wordOpacity }}
-              >
-                {w}
-              </span>
-            );
-          })}
-        </p>
-
-        {[0, 1, 2, 3, 4].map((idx) => (
-          <p key={idx} className={`glitch-loader__frag glitch-loader__frag--${idx}`} aria-hidden="true">
-            {STATEMENT}
-          </p>
-        ))}
+      <div className="glitch-loader__glow" aria-hidden="true" />
+      <div className="glitch-loader__impact" aria-hidden="true" />
+      <div className="glitch-loader__welcome">
+        <div className="glitch-loader__text" aria-hidden="true">
+          <span className="glitch-loader__line glitch-loader__line--welcome" aria-hidden="true">
+            {renderLetters('WELCOME', 760, 72)}
+          </span>
+          <span className="glitch-loader__line glitch-loader__line--subtitle" aria-hidden="true">
+            {renderLetters('TO MY PORTFOLIO', 2200, 38)}
+          </span>
+        </div>
       </div>
     </div>
   );

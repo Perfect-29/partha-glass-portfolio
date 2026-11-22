@@ -77,7 +77,7 @@ const FRAGMENT_SHADER = /* glsl */ `
     float halo = exp(-d * d * 7.0) * (0.35 + vSize * 0.04);
     float a = (core + halo) * vAlpha;
     if (a < 0.003) discard;
-    vec3 col = mix(vec3(0.75, 0.03, 0.08), vec3(1.0, 0.32, 0.30), core * (0.4 + vSeed * 0.6));
+    vec3 col = mix(vec3(0.78, 0.02, 0.19), vec3(1.0, 0.28, 0.52), core * (0.4 + vSeed * 0.6));
     gl_FragColor = vec4(col * a, a);
   }
 `;
@@ -92,7 +92,8 @@ export const ParticleField: React.FC = () => {
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
-    } catch {
+    } catch (error) {
+      console.error('Unable to initialize the portfolio particle background.', error);
       return;
     }
 
@@ -109,7 +110,7 @@ export const ParticleField: React.FC = () => {
     const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
     camera.position.set(0, 0, 6);
 
-    const count = isMobile ? 900 : 2200;
+    const count = isMobile ? 650 : 1500;
     const positions = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const seeds = new Float32Array(count);
@@ -120,7 +121,7 @@ export const ParticleField: React.FC = () => {
       positions[i * 3] = Math.cos(angle) * radius * 1.4 + (Math.random() - 0.5) * 4;
       positions[i * 3 + 1] = Math.sin(angle) * radius * 0.9 + (Math.random() - 0.5) * 4;
       positions[i * 3 + 2] = -Math.random() * 70;
-      sizes[i] = Math.random() < 0.06 ? 7 + Math.random() * 11 : 1.1 + Math.random() * 3.4;
+      sizes[i] = Math.random() < 0.035 ? 4.5 + Math.random() * 5 : 0.8 + Math.random() * 2.2;
       seeds[i] = Math.random();
     }
 
@@ -159,6 +160,7 @@ export const ParticleField: React.FC = () => {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       material.uniforms.uAspect.value = w / h;
+      if (reduced) renderer.render(scene, camera);
     };
     onResize();
     window.addEventListener('resize', onResize);
@@ -187,8 +189,10 @@ export const ParticleField: React.FC = () => {
       ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
     };
 
-    window.addEventListener('pointerdown', onPointerDown, { passive: true });
-    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    if (!reduced) {
+      window.addEventListener('pointerdown', onPointerDown, { passive: true });
+      window.addEventListener('pointermove', onPointerMove, { passive: true });
+    }
 
     let travel = 0;
     let targetTravel = 0;
@@ -199,7 +203,11 @@ export const ParticleField: React.FC = () => {
     let animId = 0;
 
     const render = (now: number) => {
-      animId = requestAnimationFrame(render);
+      if (document.visibilityState !== 'visible') {
+        animId = 0;
+        return;
+      }
+      if (!reduced) animId = requestAnimationFrame(render);
       const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
       lastFrameTime = now;
 
@@ -228,13 +236,34 @@ export const ParticleField: React.FC = () => {
       }
     };
 
-    animId = requestAnimationFrame(render);
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') {
+        if (animId) cancelAnimationFrame(animId);
+        animId = 0;
+        return;
+      }
+      lastFrameTime = performance.now();
+      if (reduced) {
+        renderer.render(scene, camera);
+      } else if (!animId) {
+        animId = requestAnimationFrame(render);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    if (reduced) {
+      render(startTime);
+    } else if (document.visibilityState === 'visible') {
+      animId = requestAnimationFrame(render);
+    }
 
     return () => {
       cancelAnimationFrame(animId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('resize', onResize);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerdown', onPointerDown);
+      if (!reduced) {
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerdown', onPointerDown);
+      }
       geometry.dispose();
       material.dispose();
       renderer.dispose();

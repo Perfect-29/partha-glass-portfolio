@@ -142,26 +142,26 @@ export const VideoModal: React.FC<VideoModalProps> = ({ project, onClose, onNavi
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <p className="px-6 text-center text-sm text-gray-300">
-                  Preview unavailable.
-                </p>
+                <div className="flex h-full w-full flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_45%,rgba(220,38,38,0.28),transparent_42%),linear-gradient(135deg,#10090c,#09090b)] px-8 text-center">
+                  <span className="glass-chip-red rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-white">
+                    {project.status}
+                  </span>
+                  <h4 className="mt-5 max-w-2xl text-2xl font-black uppercase tracking-tight text-white sm:text-4xl">
+                    {project.title}
+                  </h4>
+                  <p className="mt-3 text-sm font-semibold uppercase tracking-[0.16em] text-red-300">
+                    {project.subtitle}
+                  </p>
+                </div>
               )}
             </div>
 
-            <div className="flex flex-col items-start justify-between gap-4 border-t border-white/10 bg-white/[0.04] p-5 sm:flex-row sm:items-center">
-              <div>
-                <p className="text-sm leading-relaxed text-gray-100 sm:text-base">{project.description ?? `${project.title}, ${project.subtitle}`}</p>
-                {project.tags && project.tags.length > 0 && (
-                  <ul className="mt-3 flex flex-wrap gap-2">
-                    {project.tags.map((t) => (
-                      <li key={t} className="glass-chip rounded-full px-3 py-1 text-xs font-medium text-gray-100">
-                        {t}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className="overflow-y-auto border-t border-white/10 bg-white/[0.04] p-5">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <span className="glass-chip rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-red-200">
+                  {project.status}
+                </span>
+                <div className="flex flex-wrap items-center gap-2.5">
                 {project.liveUrl && (
                   <a
                     href={project.liveUrl}
@@ -202,7 +202,83 @@ export const VideoModal: React.FC<VideoModalProps> = ({ project, onClose, onNavi
                 >
                   {project.kind === 'software' ? 'Discuss Project' : 'Request Project'}
                 </a>
+                </div>
               </div>
+
+              <section className="glass-chip rounded-2xl p-4">
+                <h5 className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Overview</h5>
+                <p className="mt-2 text-sm leading-relaxed text-gray-100 sm:text-base">
+                  {project.description ?? `${project.title}, ${project.subtitle}`}
+                </p>
+              </section>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                {project.problem && (
+                  <section className="glass-chip rounded-2xl p-4">
+                    <h5 className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Problem Statement</h5>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-300">{project.problem}</p>
+                  </section>
+                )}
+                {project.solution && (
+                  <section className="glass-chip rounded-2xl p-4">
+                    <h5 className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Proposed Solution</h5>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-300">{project.solution}</p>
+                  </section>
+                )}
+              </div>
+
+              {project.objectives && project.objectives.length > 0 && (
+                <section className="mt-3 glass-chip rounded-2xl p-4">
+                  <h5 className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Project Objectives</h5>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-relaxed text-gray-300">
+                    {project.objectives.map((objective) => <li key={objective}>{objective}</li>)}
+                  </ul>
+                </section>
+              )}
+
+              {project.features && project.features.length > 0 && (
+                <section className="mt-3 glass-chip rounded-2xl p-4">
+                  <h5 className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Key Features</h5>
+                  <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {project.features.map((feature) => (
+                      <li key={feature} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-gray-200">
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {project.implementation && (
+                <section className="mt-3 glass-chip rounded-2xl p-4">
+                  <h5 className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Implementation</h5>
+                  <p className="mt-2 text-sm leading-relaxed text-gray-300">{project.implementation}</p>
+                </section>
+              )}
+
+              {project.applications && project.applications.length > 0 && (
+                <section className="mt-3 glass-chip rounded-2xl p-4">
+                  <h5 className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Real-World Applications</h5>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-relaxed text-gray-300">
+                    {project.applications.map((application) => <li key={application}>{application}</li>)}
+                  </ul>
+                </section>
+              )}
+
+              <section className="mt-3">
+                <h5 className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Technologies Used</h5>
+                {project.tags && project.tags.length > 0 ? (
+                  <ul className="flex flex-wrap gap-2">
+                    {project.tags.map((tag) => (
+                      <li key={tag} className="glass-chip rounded-full px-3 py-1.5 text-xs font-medium text-gray-100">
+                        {tag}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm leading-relaxed text-gray-400">A verified technology stack has not yet been documented.</p>
+                )}
+              </section>
             </div>
           </motion.div>
         </div>
