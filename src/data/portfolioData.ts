@@ -15,16 +15,45 @@ export const SITE = {
 };
 
 /* ───────────── 2. HERO (top of page) ───────────── */
-export const HERO = {
+export type HeroFeatureIcon = 'sparkles' | 'brain' | 'code' | 'database' | 'globe' | 'shield';
+
+export interface HeroFeature {
+  id: string;
+  icon: HeroFeatureIcon;
+  name: string;
+  enabled: boolean;
+}
+
+export interface HeroContent {
+  eyebrow: string;
+  headline: string;
+  roles: [string, string];
+  tagline: string;
+  primaryButton: string;
+  primaryButtonLink: string;
+  secondaryButton: string;
+  secondaryButtonLink: string;
+  image: string;
+  imageAlt: string;
+  imagePosition: string;
+  showFeatures: boolean;
+  features: HeroFeature[];
+}
+
+export const HERO: HeroContent = {
   eyebrow: 'ARTIFICIAL INTELLIGENCE · DATA SCIENCE',
   headline: 'PARTHASARATHY A',
   roles: [PORTFOLIO_TAGLINE, ''] as [string, string],
   tagline: 'Building intelligent solutions for a smarter tomorrow.',
   primaryButton: 'ENTER PORTFOLIO',
+  primaryButtonLink: '#projects',
   secondaryButton: 'CONTACT',
+  secondaryButtonLink: '#contact',
   image: '/assets/hero-red-bg.webp',
   imageAlt: 'Portrait of PARTHASARATHY A in a black court suit',
   imagePosition: '69% center',
+  showFeatures: false,
+  features: [],
 };
 
 /* ───────────── 3. LOADING SCREEN ───────────── */

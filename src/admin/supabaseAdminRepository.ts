@@ -9,6 +9,7 @@ import { supabase, supabaseConfigurationError } from '../lib/supabase';
 type PortfolioTable = Exclude<keyof Database['public']['Tables'], 'admin_users' | 'messages'>;
 type AdminSection =
   | 'home'
+  | 'hero'
   | 'about'
   | 'socials'
   | 'projects'
@@ -179,7 +180,8 @@ export async function saveAdminSection(
 
   switch (section) {
     case 'home':
-    case 'about': {
+    case 'about':
+    case 'hero': {
       const { error } = await getClient().from('profile').upsert({
         record_id: 'main',
         display_order: 0,
@@ -197,11 +199,20 @@ export async function saveAdminSection(
           roles: content.hero.roles,
           tagline: content.hero.tagline,
           primaryButton: content.hero.primaryButton,
+          primaryButtonLink: content.hero.primaryButtonLink,
           secondaryButton: content.hero.secondaryButton,
+          secondaryButtonLink: content.hero.secondaryButtonLink,
           image: content.hero.image,
           imageAlt: content.hero.imageAlt,
           imagePosition: content.hero.imagePosition,
-        } as Json,
+          showFeatures: content.hero.showFeatures,
+          features: content.hero.features.map((feature) => ({
+            id: feature.id,
+            icon: feature.icon,
+            name: feature.name,
+            enabled: feature.enabled,
+          })),
+        },
         about: {
           eyebrow: content.about.eyebrow,
           portrait: content.about.portrait,

@@ -2,7 +2,7 @@ import { DEFAULT_CONTACT_SETTINGS, DEFAULT_PORTFOLIO_CONTENT, readContactSetting
 import { readFireEffectsSettings } from '../data/fireEffects';
 import { isCustomSectionType } from '../data/portfolioSections';
 import type { CustomSectionContentRecord, PortfolioSectionConfig, PortfolioSectionType } from '../data/portfolioSections';
-import type { PortfolioContent, Project } from '../data/portfolioData';
+import type { HeroFeature, HeroFeatureIcon, PortfolioContent, Project } from '../data/portfolioData';
 import { isPortfolioContent } from './portfolioValidation';
 import type { Json } from './supabaseDatabase.types';
 import { supabase, supabaseConfigurationError } from './supabase';
@@ -10,6 +10,11 @@ import { supabase, supabaseConfigurationError } from './supabase';
 const PRIVATE_DOCUMENT_BUCKET = 'portfolio-documents';
 const PUBLIC_IMAGE_BUCKET = 'portfolio-images';
 const SIGNED_URL_LIFETIME_SECONDS = 60 * 60;
+const HERO_FEATURE_ICONS = new Set<string>(['sparkles', 'brain', 'code', 'database', 'globe', 'shield']);
+
+function isHeroFeatureIcon(value: unknown): value is HeroFeatureIcon {
+  return typeof value === 'string' && HERO_FEATURE_ICONS.has(value);
+}
 
 export interface PublishedPortfolioResult {
   content: PortfolioContent;
@@ -69,6 +74,37 @@ function readStringArray(value: Json | undefined, fallback: string[]): string[] 
     result.push(item);
   }
   return result;
+}
+
+function readHeroFeatures(value: Json | undefined, fallback: HeroFeature[]): HeroFeature[] {
+  if (!Array.isArray(value)) return fallback.map((feature) => ({ ...feature }));
+  const ids = new Set<string>();
+  const features: HeroFeature[] = [];
+  for (const item of value) {
+    if (
+      item === null ||
+      typeof item !== 'object' ||
+      Array.isArray(item) ||
+      typeof item.id !== 'string' ||
+      !/^[A-Za-z0-9_-]+$/.test(item.id) ||
+      ids.has(item.id) ||
+      !isHeroFeatureIcon(item.icon) ||
+      typeof item.name !== 'string' ||
+      !item.name.trim() ||
+      item.name.length > 80 ||
+      typeof item.enabled !== 'boolean'
+    ) {
+      return fallback.map((feature) => ({ ...feature }));
+    }
+    ids.add(item.id);
+    features.push({
+      id: item.id,
+      icon: item.icon,
+      name: item.name,
+      enabled: item.enabled,
+    });
+  }
+  return features;
 }
 
 function readStats(value: Json | undefined, fallback: PortfolioContent['stats']): PortfolioContent['stats'] {
@@ -481,10 +517,16 @@ async function loadPortfolio(options: {
       roles: [roles[0] ?? DEFAULT_PORTFOLIO_CONTENT.hero.roles[0], roles[1] ?? DEFAULT_PORTFOLIO_CONTENT.hero.roles[1]],
       tagline: readString(heroData.tagline, DEFAULT_PORTFOLIO_CONTENT.hero.tagline),
       primaryButton: readString(heroData.primaryButton, DEFAULT_PORTFOLIO_CONTENT.hero.primaryButton),
+      primaryButtonLink: readString(heroData.primaryButtonLink, DEFAULT_PORTFOLIO_CONTENT.hero.primaryButtonLink),
       secondaryButton: readString(heroData.secondaryButton, DEFAULT_PORTFOLIO_CONTENT.hero.secondaryButton),
+      secondaryButtonLink: readString(heroData.secondaryButtonLink, DEFAULT_PORTFOLIO_CONTENT.hero.secondaryButtonLink),
       image: heroImage,
       imageAlt: readString(heroData.imageAlt, DEFAULT_PORTFOLIO_CONTENT.hero.imageAlt),
       imagePosition: readString(heroData.imagePosition, DEFAULT_PORTFOLIO_CONTENT.hero.imagePosition),
+      showFeatures: typeof heroData.showFeatures === 'boolean'
+        ? heroData.showFeatures
+        : DEFAULT_PORTFOLIO_CONTENT.hero.showFeatures,
+      features: readHeroFeatures(heroData.features, DEFAULT_PORTFOLIO_CONTENT.hero.features),
     },
     about: {
       ...DEFAULT_PORTFOLIO_CONTENT.about,

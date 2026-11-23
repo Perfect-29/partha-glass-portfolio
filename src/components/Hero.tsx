@@ -4,6 +4,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { gsap } from 'gsap';
 import { VenomButton } from './VenomButton';
 import { usePortfolio } from '../context/PortfolioContext';
+import type { HeroFeatureIcon } from '../data/portfolioData';
+import { BrainCircuit, Code2, Database, Globe2, ShieldCheck, Sparkles } from 'lucide-react';
 import {
   BREATHING_VERTICES,
   SHARD_POLYGONS,
@@ -19,6 +21,14 @@ import {
 
 /** Horizontal position (0..1) of the subject inside the 16:9 hero image. */
 const SUBJECT_X = 0.69;
+const HERO_FEATURE_ICONS = {
+  sparkles: Sparkles,
+  brain: BrainCircuit,
+  code: Code2,
+  database: Database,
+  globe: Globe2,
+  shield: ShieldCheck,
+} satisfies Record<HeroFeatureIcon, React.ElementType>;
 
 /* ───────────────────────── Reveal-on-scroll for the hero copy ───────────────────────── */
 function useRevealOnScroll(rootRef: React.RefObject<HTMLElement>, selector: string) {
@@ -674,19 +684,34 @@ export const Hero: React.FC<{ onEnter: () => void; onReady: () => void }> = ({ o
               <p className="text-gray-300 text-xs sm:text-sm md:text-base lg:text-lg font-normal tracking-wide mt-1">
                 {HERO.tagline}
               </p>
+              {HERO.showFeatures && HERO.features.some((feature) => feature.enabled) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-semibold uppercase tracking-wider text-gray-300 sm:text-xs">
+                  {HERO.features.filter((feature) => feature.enabled).map((feature) => {
+                    const FeatureIcon = HERO_FEATURE_ICONS[feature.icon];
+                    return (
+                      <span key={feature.id} className="inline-flex items-center gap-1.5">
+                        <FeatureIcon className="h-3.5 w-3.5 text-red-300" aria-hidden="true" />
+                        {feature.name}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-3 sm:mt-6">
                 <VenomButton
-                  href="#projects"
+                  href={HERO.primaryButtonLink}
                   variant="primary"
                   onClick={(event) => {
-                    event.preventDefault();
-                    onEnter();
+                    if (HERO.primaryButtonLink === '#projects') {
+                      event.preventDefault();
+                      onEnter();
+                    }
                   }}
                 >
                   {HERO.primaryButton}
                 </VenomButton>
                 <a
-                  href="#contact"
+                  href={HERO.secondaryButtonLink}
                   className="glass glass-hover inline-flex items-center justify-center px-5 py-3 sm:px-7 sm:py-3.5 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-200 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
                 >
                   {HERO.secondaryButton}

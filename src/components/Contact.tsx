@@ -297,9 +297,10 @@ export const Contact: React.FC = () => {
                   target={external ? '_blank' : undefined}
                   rel={external ? 'noopener noreferrer' : undefined}
                   aria-label={item.label}
-                  className="glass glass-hover group grid aspect-square min-h-20 place-items-center rounded-2xl p-4 text-red-300 transition-transform duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:border-red-400/25 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-red-400"
+                  className="glass glass-hover group flex aspect-square min-h-20 flex-col items-center justify-center gap-2 rounded-2xl p-4 text-red-300 transition-transform duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:border-red-400/25 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-red-400"
                 >
                   <Icon className="h-7 w-7 transition-transform duration-300 group-hover:scale-110 group-active:scale-95" aria-hidden="true" />
+                  <span className="text-xs font-semibold tracking-wide text-rose-200">{item.label}</span>
                 </a>
               );
             }

@@ -25,6 +25,32 @@ export function isPortfolioContent(value: unknown): value is PortfolioContent {
   };
   const isStringList = (items: unknown) => Array.isArray(items) && items.every(isString);
   const isSafeId = (id: string) => /^[A-Za-z0-9_-]+$/.test(id);
+  const isHeroLink = (item: unknown) => {
+    if (!isString(item) || !item.trim() || item.length > 2048) return false;
+    const value = item.trim();
+    if (/^#[A-Za-z][A-Za-z0-9_-]*$/.test(value) || /^\/(?!\/)/.test(value)) return true;
+    try {
+      const url = new URL(value);
+      return ['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol) &&
+        !url.username &&
+        !url.password &&
+        (url.protocol === 'mailto:' || url.protocol === 'tel:' || Boolean(url.hostname));
+    } catch {
+      return false;
+    }
+  };
+  const heroFeatureIcons = new Set<string>(['sparkles', 'brain', 'code', 'database', 'globe', 'shield']);
+  const isHeroFeatureList = (items: unknown) => {
+    if (!Array.isArray(items)) return false;
+    const ids = new Set<string>();
+    return items.every((item) => {
+      if (!isRecord(item) || !isString(item.id) || !isSafeId(item.id) || ids.has(item.id) ||
+        !isString(item.icon) || !heroFeatureIcons.has(item.icon) || !isString(item.name) ||
+        !item.name.trim() || item.name.length > 80 || typeof item.enabled !== 'boolean') return false;
+      ids.add(item.id);
+      return true;
+    });
+  };
   const isFileMetadata = (item: Record<string, unknown>, prefix = '') => {
     const fileName = item[prefix ? `${prefix}FileName` : 'fileName'];
     const fileType = item[prefix ? `${prefix}FileType` : 'fileType'];
@@ -151,10 +177,14 @@ export function isPortfolioContent(value: unknown): value is PortfolioContent {
       content.hero.roles.every(isString) &&
       isString(content.hero.tagline) &&
       isString(content.hero.primaryButton) &&
+      isHeroLink(content.hero.primaryButtonLink) &&
       isString(content.hero.secondaryButton) &&
+      isHeroLink(content.hero.secondaryButtonLink) &&
       isString(content.hero.image) &&
       isString(content.hero.imageAlt) &&
       isString(content.hero.imagePosition) &&
+      typeof content.hero.showFeatures === 'boolean' &&
+      isHeroFeatureList(content.hero.features) &&
       content.loader &&
       isString(content.loader.statement) &&
       isStringList(content.loader.redWords) &&

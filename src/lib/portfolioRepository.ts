@@ -231,7 +231,10 @@ export function recordsToContent(records: PortfolioRecords): PortfolioContent {
   const candidate: unknown = {
     ...DEFAULT_PORTFOLIO_CONTENT,
     site,
-    hero: profile?.hero ?? DEFAULT_PORTFOLIO_CONTENT.hero,
+    hero: {
+      ...DEFAULT_PORTFOLIO_CONTENT.hero,
+      ...(isRecord(profile?.hero) ? profile.hero : {}),
+    },
     about: profile?.about ?? DEFAULT_PORTFOLIO_CONTENT.about,
     loader: siteSettings?.loader ?? DEFAULT_PORTFOLIO_CONTENT.loader,
     techStack: Array.isArray(siteSettings?.techStack) ? siteSettings.techStack : DEFAULT_PORTFOLIO_CONTENT.techStack,

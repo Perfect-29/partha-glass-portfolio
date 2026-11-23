@@ -60,6 +60,7 @@ import { isSupabaseConfigured, supabase, supabaseAuthCallbackAtInitialization } 
 import { CmsEntryManager } from './CmsEntryManager';
 import { ContactSettingsManager } from './ContactSettingsManager';
 import { FireEffectsStudio } from './FireEffectsStudio';
+import { HeroSettingsManager } from './HeroSettingsManager';
 import { SectionManagementPanel } from './SectionManagementPanel';
 import type { CmsAsset, CmsField } from './CmsEntryManager';
 import {
@@ -79,6 +80,7 @@ import {
 
 type SectionId =
   | 'home'
+  | 'hero'
   | 'about'
   | 'projects'
   | 'skills'
@@ -99,7 +101,8 @@ type SectionId =
 type SectionConfig = { id: SectionId; label: string; icon: typeof Home; fields: string[] };
 
 const SECTIONS: SectionConfig[] = [
-  { id: 'home', label: 'Home / Hero', icon: Home, fields: ['site', 'hero', 'loader'] },
+  { id: 'home', label: 'Home / Site Settings', icon: Home, fields: ['site', 'loader'] },
+  { id: 'hero', label: 'Hero Section Management', icon: Sparkles, fields: ['hero'] },
   { id: 'about', label: 'About & Profile', icon: UserRound, fields: ['about'] },
   { id: 'projects', label: 'Projects', icon: FolderKanban, fields: ['projects'] },
   { id: 'skills', label: 'Skills', icon: Wrench, fields: ['skills', 'techStack'] },
@@ -958,7 +961,7 @@ function AdminDashboard({ user, onLogout }: { user: User; onLogout: () => Promis
   selectedSectionRef.current = selectedSection;
   const selectedProject = content.projects.find((project) => project.id === selectedProjectId) ?? content.projects[0];
   const isMessageView = sectionId === 'messages';
-  const isManagedSection = ['experience', 'certifications', 'achievements', 'internships', 'workshops', 'codingProfiles', 'publications', 'resume', 'fireEffects', 'contact'].includes(sectionId);
+  const isManagedSection = ['experience', 'certifications', 'achievements', 'internships', 'workshops', 'codingProfiles', 'publications', 'resume', 'fireEffects', 'contact', 'hero'].includes(sectionId);
   const unreadMessageCount = messages.filter((message) => message.status === 'new').length;
   const repliedMessageCount = messages.filter((message) => message.status === 'replied').length;
   const canEdit = Boolean(supabase && user.id);
@@ -1253,7 +1256,7 @@ function AdminDashboard({ user, onLogout }: { user: User; onLogout: () => Promis
     }
   };
 
-  const uploadFile = async (file: File, kind: 'profile' | 'project') => {
+  const uploadFile = async (file: File, kind: 'profile' | 'project' | 'hero') => {
     if (!supabase || working || uploadingFile) return;
     const allowedType = ['image/jpeg', 'image/png'].includes(file.type);
     const sizeLimit = 10 * 1024 * 1024;
@@ -1278,9 +1281,9 @@ function AdminDashboard({ user, onLogout }: { user: User; onLogout: () => Promis
 
     setUploadingFile(true);
     setNotice(null);
-    const folder = kind === 'profile' ? 'profile' : 'projects';
+    const folder = kind === 'project' ? 'projects' : 'profile';
     try {
-      const recordId = kind === 'project' ? selectedProject?.id ?? 'project' : 'main';
+      const recordId = kind === 'project' ? selectedProject?.id ?? 'project' : kind === 'hero' ? 'hero' : 'main';
       const downloadUrl = await uploadPortfolioAsset(file, folder, recordId);
 
       if (kind === 'profile') updated.about = { ...updated.about, portrait: downloadUrl };
@@ -1289,6 +1292,7 @@ function AdminDashboard({ user, onLogout }: { user: User; onLogout: () => Promis
           project.id === selectedProject.id ? { ...project, poster: downloadUrl } : project
         );
       }
+      if (kind === 'hero') updated.hero = { ...updated.hero, image: downloadUrl };
       setContent(updated);
       setEditorJson(editorValue(updated, selectedSection));
       updateDirty(true);
@@ -1304,7 +1308,7 @@ function AdminDashboard({ user, onLogout }: { user: User; onLogout: () => Promis
     }
   };
 
-  const onFileSelected = (kind: 'profile' | 'project') => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileSelected = (kind: 'profile' | 'project' | 'hero') => (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (file) void uploadFile(file, kind);
@@ -1677,7 +1681,15 @@ function AdminDashboard({ user, onLogout }: { user: User; onLogout: () => Promis
                     onSave={() => void saveContactSettings()}
                   />
                 )}
-                {(sectionId === 'home' || sectionId === 'about') && (
+                {sectionId === 'hero' && (
+                  <HeroSettingsManager
+                    settings={content.hero}
+                    uploading={uploadingFile}
+                    onChange={(hero) => updateContent({ ...content, hero })}
+                    onUpload={(file) => void uploadFile(file, 'hero')}
+                  />
+                )}
+                {(sectionId === 'home' || sectionId === 'about' || sectionId === 'hero') && (
                   <div className="mb-4 flex flex-wrap gap-3">
                     <label className="flex items-center gap-2 rounded-xl border border-white/5 bg-black/20 px-3 py-2.5 text-xs font-bold text-gray-300">
                       <input
